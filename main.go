@@ -7,6 +7,7 @@ import (
 	"github.com/kr/pretty"
 	"os"
 	"strings"
+	"time"
 )
 
 var (
@@ -23,17 +24,28 @@ func main() {
 	res, _ := r.ReadAll()
 	problems := ParseProblem(res)
 	var correct int
+	answerChan := make(chan string)
+	timer := time.NewTimer(time.Second * 10)
+problemLoop:
 	for i, p := range problems {
 		pretty.Printf("Question #%d: %s\n", i+1, p.q)
-		var answer string
-		if _, err := fmt.Scanf("%s\n", &answer); err != nil {
-			exit(err.Error())
-		}
-		if answer == p.a {
-			correct++
+		go func() {
+			var answer string
+			if _, err := fmt.Scanf("%s\n", &answer); err != nil {
+				exit(err.Error())
+			}
+			answerChan <- answer
+		}()
+		select {
+		case <-timer.C:
+			pretty.Printf("Time over!\n Correct Answers %d Of %d", correct, len(problems))
+			break problemLoop
+		case a := <-answerChan:
+			if a == p.a {
+				correct++
+			}
 		}
 	}
-	pretty.Printf("Correct answers: %d", correct)
 }
 
 type Problem struct {
